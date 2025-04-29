@@ -1,0 +1,18 @@
+{
+	"format_version": 2,
+	"header": {
+		"name": "Aetheris-R",
+		"description": "Aetheris resource pack",
+		"uuid": "02892964-91f4-40b6-8eb1-7c3a5bd38713",
+		"version": [1, 0, 0],
+		"min_engine_version": [1, 18, 0]
+	},
+	"modules": [
+		{
+			"type": "resources",
+			"description": "Aetheris resource pack",
+			"uuid": "9f25520c-66ff-4364-aa81-4a5e0173ece5",
+			"version": [1, 0, 0]
+		}
+	]
+}

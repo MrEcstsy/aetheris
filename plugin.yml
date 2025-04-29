@@ -1,0 +1,19 @@
+name: Aetheris-R
+main: ecstsy\AetherisRecode\Loader
+version: 1.0.0
+api: 5.3.0
+author: ecstsylove
+
+permissions:
+  aetheris.default:
+    default: true
+  aetheris.eco:
+    default: op 
+  aetheris.eco.give:
+    default: op
+  aetheris.eco.take:
+    default: op
+  aetheris.kits.give:
+    default: op
+  aetheris.staff-chat:
+    default: op

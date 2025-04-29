@@ -1,0 +1,36 @@
+# (!) DO  NOT CHANGE (!)
+version: 1
+
+settings:
+  combat:
+    time: 10
+    kill-on-log: true
+    ban-all-commands: false
+    banned-commands:
+      - spawn
+      - home
+      - tpa
+      - tp
+      - warp
+      - wild
+  server:
+    auto-inventory: 
+      enabled: true
+      drop-when-full: true
+      xp: true
+  economy:
+    max-money: 10000000
+    starting-money: 0
+  skyblock:
+    max-char-name: 20
+    invite-timeout: 30
+    max-members: 5
+    damage:
+      default: true
+      lava: true
+      drown: true
+      fall: false
+      projectile: false
+      fire: true
+      void: false
+      hunger: true
