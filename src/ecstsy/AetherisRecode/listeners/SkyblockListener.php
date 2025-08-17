@@ -36,6 +36,9 @@ final class SkyblockListener implements Listener
         return $member['role'] ?? 'visitor';
     }
 
+    /**
+     * @priority MONITOR
+     */
     public function onBreak(BlockBreakEvent $event): void
     {
         $player = $event->getPlayer();
