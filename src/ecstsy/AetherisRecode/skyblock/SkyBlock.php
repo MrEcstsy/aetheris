@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ecstsy\AetherisRecode\skyblock;
 
 use ecstsy\AetherisRecode\Loader;
+use ecstsy\AetherisRecode\server\scoreboard\ScoreboardHelper;
 use ecstsy\AetherisRecode\utils\QueryStmts;
 use ecstsy\AetherisRecode\utils\Utils;
 use pocketmine\math\Vector3;
@@ -12,6 +13,7 @@ use pocketmine\player\Player;
 use pocketmine\Server;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
+use Yanoox\ScoreBoardAPI;
 
 final class SkyBlock
 {
@@ -63,6 +65,9 @@ final class SkyBlock
     {
         $this->leader = $leader;
         $this->updateDb();
+
+        $player = Server::getInstance()->getPlayerByUUID(Uuid::fromString($leader));
+        ScoreBoardAPI::editLineScore($player, 8, "", $this->members[$leader]['role']);
     }
 
     public function getMembers(): array
@@ -149,6 +154,9 @@ final class SkyBlock
         if (isset($this->members[$uuid])) {
             $this->members[$uuid]['role'] = $newRole;
             $this->updateDb();
+            
+            $player = Server::getInstance()->getPlayerByUUID(Uuid::fromString($uuid));
+            ScoreboardHelper::updateIslandLines($player);
         }
     }
 

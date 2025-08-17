@@ -6,6 +6,7 @@ namespace ecstsy\AetherisRecode\skyblock;
 
 use ecstsy\AetherisRecode\Loader;
 use ecstsy\AetherisRecode\player\AetherisPlayer;
+use ecstsy\AetherisRecode\server\scoreboard\ScoreboardHelper;
 use ecstsy\AetherisRecode\utils\IslandPermissions;
 use ecstsy\AetherisRecode\utils\IslandSettings;
 use ecstsy\AetherisRecode\utils\QueryStmts;
@@ -20,6 +21,7 @@ use pocketmine\utils\SingletonTrait;
 use pocketmine\world\World;
 use pocketmine\utils\TextFormat as C;
 use Ramsey\Uuid\Uuid;
+use Yanoox\ScoreBoardAPI;
 
 final class SkyBlockManager
 {
@@ -108,7 +110,7 @@ final class SkyBlockManager
         unset($this->skyblocks[$uuid]);
     }
 
-    public function createSkyBlock(Player $player, string $islandId, string $name, string $generator): void
+    public function createSkyBlock(Player $player, string $islandIdent, string $name, string $generator): void
     {
         $session = $this->plugin->getPlayerManager()->getSession($player);
         $config = GeneralUtils::getConfiguration(Loader::getInstance(), "config.yml");
@@ -117,7 +119,7 @@ final class SkyBlockManager
             return;
         }
 
-        $islandId = strtolower($islandId);
+        $islandId = strtolower($islandIdent);
         $worldsPath = $this->plugin->getServer()->getDataPath() . "worlds/";
         $generatorPath = $worldsPath . $generator;
 
@@ -160,7 +162,7 @@ final class SkyBlockManager
 
         $defaultRolePermissions = [
             'visitor'   => [
-                IslandPermissions::KILL_MOBS            => false,
+                IslandPermissions::KILL_MOBS => false,
                 IslandPermissions::OPEN_CONTAINERS => false,
                 IslandPermissions::OPEN_DOORS  => false,
                 IslandPermissions::PICKUP         => false,
@@ -206,7 +208,7 @@ final class SkyBlockManager
                 IslandPermissions::EDIT_SIGNS => false,
             ],
             'member'    => [
-                IslandPermissions::KILL_MOBS            => true,
+                IslandPermissions::KILL_MOBS => true,
                 IslandPermissions::OPEN_CONTAINERS => true,
                 IslandPermissions::OPEN_DOORS  => true,
                 IslandPermissions::PICKUP         => true,
@@ -342,6 +344,7 @@ final class SkyBlockManager
 
         $session->setSkyblock($islandId);
         $skyblock->updateDb();
+        ScoreboardHelper::updateIslandLines($player);
     }
 
     /**
@@ -379,27 +382,28 @@ final class SkyBlockManager
         return false;
     }
 
-    public function deleteSkyBlock(string $uuid): void
-    {
-        $skyblock = $this->getSkyBlockByUuid($uuid);
 
+    public function deleteSkyBlock(string $islandId): void
+    {
+        $skyblock = $this->getSkyBlock($islandId);
         if (!$skyblock) {
-            $this->plugin->getLogger()->warning("Skyblock with UUID {$uuid} not found.");
+            $this->plugin->getLogger()->warning("Skyblock with the name {$islandId} not found.");
             return;
         }
 
-        unset($this->skyblocks[$uuid]);
+        unset($this->skyblocks[$islandId]);
 
         foreach ($this->plugin->getPlayerManager()->getSessions() as $session) {
-            if ($session->getSkyblock() === $uuid) {
+            if ($session->getSkyblock() === $islandId) {
                 $session->setSkyblock(null);
+                ScoreboardHelper::updateIslandLines($session->getPlayer());
             }
         }
 
         $this->plugin->getDataBase()->executeGeneric(
             QueryStmts::ISLANDS_DELETE,
             [
-                'uuid' => $uuid
+                'island_id' => $islandId
             ]
         );
 
@@ -407,6 +411,13 @@ final class SkyBlockManager
 
         $worldManager = $this->plugin->getServer()->getWorldManager();
         $skyblockWorld = $worldManager->getWorldByName($worldName);
+
+        if ($skyblockWorld !== null) {
+            foreach ($skyblockWorld->getPlayers() as $player) {
+                $player->teleport($this->plugin->getServer()->getWorldManager()->getDefaultWorld()->getSpawnLocation());
+                $player->sendMessage(C::colorize("&cYour island was disbanded. You have been sent to spawn."));
+            }
+        }
 
         $worldPath = $this->plugin->getServer()->getDataPath() . "worlds/" . $worldName;
         if (is_dir($worldPath)) {
