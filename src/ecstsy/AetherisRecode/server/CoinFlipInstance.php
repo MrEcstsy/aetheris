@@ -64,7 +64,7 @@ final class CoinFlipInstance {
             $player->sendMessage(C::colorize("&r&a&l(!) &r&aCoinflip created!"));
         });
 
-        $form->setTitle(C::colorize("&r&8Pick a coin flip color"));
+        $form->setTitle("§r§8Pick a coin flip color");
 
         foreach (self::COLORS as $colorName => $colorCode) {
             $form->addButton(C::colorize("&r&l" . $colorCode . $colorName . "\n&r&8Click to pick"));
@@ -83,7 +83,7 @@ final class CoinFlipInstance {
             self::getCoinFlipOpponentColorForm($player, $selectedUUID, $selectedCF);
         });
 
-        $form->setTitle(C::colorize("&r&8Coin Flips"));
+        $form->setTitle("§r§8Coin Flips");
 
         if (empty(self::$coinFlips)) {
             $form->setContent(C::colorize("&r&8No coinflips available."));
@@ -119,7 +119,7 @@ final class CoinFlipInstance {
             self::startCoinFlip($cf["username"], $player->getName(), $cf["type"], $opponentColor, $cf["wager"]);
         });
     
-        $form->setTitle("§8Pick Your CoinFlip Color");
+        $form->setTitle("§r§8Pick a coin flip color");
     
         $colors = array_keys(self::COLORS);
         unset($colors[array_search($cf["type"], $colors)]);
