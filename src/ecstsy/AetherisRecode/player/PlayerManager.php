@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ecstsy\AetherisRecode\player;
 
 use ecstsy\AetherisRecode\Loader;
+use ecstsy\AetherisRecode\player\skills\SkillType;
 use ecstsy\AetherisRecode\utils\QueryStmts;
 use ecstsy\MartianUtilities\utils\GeneralUtils;
 use pocketmine\player\Player;
@@ -42,7 +43,8 @@ final class PlayerManager {
                     $row['bounty'],
                     $row['settings'],
                     $row['island'],
-                    $row['collection']
+                    $row['collection'],
+                    $row['skills']
                 );
             }
         });
@@ -57,6 +59,12 @@ final class PlayerManager {
      */
     public function createSession(Player $player): AetherisPlayer {
         $config = GeneralUtils::getConfiguration(Loader::getInstance(), "config.yml");
+
+        $skills = [];
+        foreach (SkillType::getAllSkillNames() as $skill) {
+            $skills[$skill] = ["level" => 1, "xp" => 0.0];
+        }
+
         $args = [
             'uuid' => $player->getUniqueId()->toString(),
             'username' => $player->getName(),
@@ -66,10 +74,11 @@ final class PlayerManager {
             "deaths" => 0,
             "bounty" => 0,
             "settings" => json_encode([
-                'chest_inventories' => true, 'broadcasts' => true, 'loot_announcer' => true
+                'chest_inventories' => true, 'broadcasts' => true, 'loot_announcer' => true, 'quick_claim' => true
             ]),
             'island' => null,
-            'collection' => ''
+            'collection' => '',
+            'skills' => json_encode($skills),
         ];
 
         Loader::getDatabase()->executeInsert(QueryStmts::PLAYERS_CREATE, $args);
@@ -84,7 +93,8 @@ final class PlayerManager {
             $args['bounty'],
             $args['settings'],
             $args['island'],
-            $args['collection']
+            $args['collection'],
+            $args['skills']
         );
 
         return $this->sessions[$player->getUniqueId()->toString()];
