@@ -164,10 +164,19 @@ final class IslandControlScreen extends BaseScreen
         }));
     }
 
+    public function getMenu(): ?InvMenu
+    {
+        return $this->menu;
+    }
+    public function getForm(): SimpleForm
+    {
+        return $this->form;
+    }
+
     public static function display($player): void
     {
         $screen = new self($player);
-        $screen->menu->send($player);
+        $screen->getMenu()->send($player);
     }
 
     public static function displayForm($player): void

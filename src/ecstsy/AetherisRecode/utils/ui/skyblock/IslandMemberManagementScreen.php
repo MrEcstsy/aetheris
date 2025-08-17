@@ -61,7 +61,7 @@ final class IslandMemberManagementScreen extends BaseScreen {
             }
         });
     
-        $this->form->setTitle(C::colorize("&r&8Island Member Management"));
+        $this->form->setTitle("§r§8Island Member Management");
         $this->form->setContent(C::colorize("&r&fManage your island members below:"));
     
         $this->form->addButton(C::colorize("&r&aInvite Player"));

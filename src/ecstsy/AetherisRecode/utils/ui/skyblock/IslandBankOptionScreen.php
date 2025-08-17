@@ -55,7 +55,7 @@ final class IslandBankOptionScreen extends BaseScreen
             }
         });
 
-        $this->form->setTitle(C::colorize($option === "withdraw" ? "Island Bank Withdrawal" : "Island Bank Deposit"));
+        $this->form->setTitle($option === "withdraw" ? "Island Bank Withdrawal" : "Island Bank Deposit");
         $this->form->addInput(C::colorize("Amount:"), "e.g: 10000");
     }
 

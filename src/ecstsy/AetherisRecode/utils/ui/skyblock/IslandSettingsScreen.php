@@ -42,7 +42,7 @@ final class IslandSettingsScreen extends BaseScreen {
             self::displayForm($p, $sb);
         });
 
-        $this->form->setTitle(C::colorize("&r&8Island Settings"));
+        $this->form->setTitle("§r§8Island Settings");
         $this->form->setContent(C::colorize("&r&fToggle island behavior settings:"));
 
         foreach (IslandSettings::getAllSettings() as $setting) {

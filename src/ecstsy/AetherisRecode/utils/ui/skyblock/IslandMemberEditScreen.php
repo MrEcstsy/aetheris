@@ -83,7 +83,7 @@ final class IslandMemberEditScreen extends BaseScreen{
             }
         });
     
-        $this->form->setTitle(C::colorize("&r&8Manage Member: &b{$memberName}"));
+        $this->form->setTitle("§r§8Manage Member: §b{$memberName}");
         $this->form->setContent(C::colorize("&r&fRole: &e" . ucfirst($role) . "\n&r&fJoined: &e{$joinDate}"));
 
         if (Utils::canPromote($playerRole, $role)) {

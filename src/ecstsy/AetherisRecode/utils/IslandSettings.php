@@ -83,7 +83,6 @@ final class IslandSettings
 
     public static function getAllSettings(): array
     {
-        $reflection = new \ReflectionClass(__CLASS__);
-        return array_values($reflection->getConstants());
+        return array_keys(self::getDefaults());
     }
 }

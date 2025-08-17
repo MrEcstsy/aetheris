@@ -82,7 +82,7 @@ final class IslandInvitePlayerScreen extends BaseScreen {
             $viewer->sendToastNotification(C::colorize(Loader::SERVER_TITLE), C::colorize("&a✔ Invitation sent to &b{$inviteName}&a!"));
         });
     
-        $this->form->setTitle(C::colorize("&r&8Invite Player"));
+        $this->form->setTitle("§r§8Invite Player");
         $this->form->addInput(C::colorize("&r&fType the player's name:"), "Player name");
         $this->form->addDropdown(C::colorize("&r&fSelect from online players:"), $dropdownDisplay);
     }

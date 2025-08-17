@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ecstsy\AetherisRecode\utils\ui;
 
 use ecstsy\AetherisRecode\Loader;
+use ecstsy\AetherisRecode\server\items\AetherisItemFactory;
 use ecstsy\AetherisRecode\utils\inventory\CustomSizedInvMenu;
 use ecstsy\AetherisRecode\utils\Utils;
 use ecstsy\MartianUtilities\utils\GeneralUtils;
@@ -18,10 +19,12 @@ use pocketmine\block\VanillaBlocks;
 use pocketmine\item\VanillaItems;
 use pocketmine\player\Player;
 use pocketmine\utils\TextFormat as C;
+use Vecnavium\FormsUI\SimpleForm;
 
 final class KitScreen extends BaseScreen {
 
     private static InvMenu $menu;
+    private static SimpleForm $form;
 
     public function __construct(Player $player) {
         self::$menu = CustomSizedInvMenu::create(45);
@@ -42,12 +45,12 @@ final class KitScreen extends BaseScreen {
         }
 
         $kits = [
-            13 => ["id" => "member", "name" => "&l&7Member Kit", "cooldown" => 60, "content" => ["Protection I", "Unbreaking I"]],
-            20 => ["id" => "initiate", "name" => "&l&9Initiate Kit", "cooldown" => 120, "content" => ["Protection I", "Feather Falling I", "Sharpness I"]],
-            21 => ["id" => "explorer", "name" => "&l&cExplorer Kit", "cooldown" => 180, "content" => ["Protection II", "Depth Strider I", "Efficiency II"]],
-            22 => ["id" => "champion", "name" => "&l&6Champion Kit", "cooldown" => 300, "content" => ["Protection III", "Thorns I", "Fire Aspect I"]],
-            23 => ["id" => "warden", "name" => "&l&aWarden Kit", "cooldown" => 600, "content" => ["Protection IV", "Soul Speed I", "Looting II"]],
-            24 => ["id" => "aetherian", "name" => "&l&dAetherian Kit", "cooldown" => 1200, "content" => ["Protection V", "Frost Walker II", "Fortune IV"]]
+            13 => ["form_id" => 0, "id" => "member_kit", "name" => "&l&7Member Kit", "cooldown" => 60, "content" => ["Protection I", "Unbreaking I"]],
+            20 => ["form_id" => 1, "id" => "initiate_kit", "name" => "&l&9Initiate Kit", "cooldown" => 120, "content" => ["Protection I", "Feather Falling I", "Sharpness I"]],
+            21 => ["form_id" => 2, "id" => "explorer_kit", "name" => "&l&cExplorer Kit", "cooldown" => 180, "content" => ["Protection II", "Depth Strider I", "Efficiency II"]],
+            22 => ["form_id" => 3, "id" => "champion_kit", "name" => "&l&6Champion Kit", "cooldown" => 300, "content" => ["Protection III", "Thorns I", "Fire Aspect I"]],
+            23 => ["form_id" => 4, "id" => "warden_kit", "name" => "&l&aWarden Kit", "cooldown" => 600, "content" => ["Protection IV", "Soul Speed I", "Looting II"]],
+            24 => ["form_id" => 5, "id" => "aetherian_kit", "name" => "&l&dAetherian Kit", "cooldown" => 1200, "content" => ["Protection V", "Frost Walker II", "Fortune IV"]]
         ];
     
         foreach ($kits as $slot => $kit) {
@@ -105,7 +108,7 @@ final class KitScreen extends BaseScreen {
             $session->addCooldown($kit['id'], $kit['cooldown']);
             PlayerUtils::playSound($player, "random.levelup");
         
-            $player->getInventory()->addItem(Utils::createKitToken(strtolower($kit['id'])));
+            $player->getInventory()->addItem(AetherisItemFactory::kitToken(strtolower($kit['id'])));
             $player->sendToastNotification(
                 C::colorize(Loader::SERVER_TITLE),
                 C::colorize("&r&a✔ {$kit['name']} successfully claimed!")
@@ -120,15 +123,63 @@ final class KitScreen extends BaseScreen {
                 ]);
             $inventory->setItem($slot, $cooldownItem);
         }));        
+
+        self::$form = new SimpleForm(function (Player $player, ?int $data) use ($kits, $session) {
+            if ($data === null) return; 
+            
+            $buttonToKitSlot = array_values(array_keys($kits));
+            if (!isset($buttonToKitSlot[$data])) return;
+            $kitSlot = $buttonToKitSlot[$data];
+            $kit = $kits[$kitSlot];
+
+            $cooldownRemaining = $session->getCooldown($kit['id']);
+            if ($cooldownRemaining > 0) {
+                $player->sendToastNotification(
+                    C::colorize(Loader::SERVER_TITLE),
+                    C::colorize("&r&c⚠ Kit on cooldown! Ends in " . GeneralUtils::translateTime($cooldownRemaining))
+                );
+                PlayerUtils::playSound($player, "note.bass");
+                return;
+            }
+
+            $session->addCooldown($kit['id'], $kit['cooldown']);
+            PlayerUtils::playSound($player, "random.levelup");
+
+            $player->getInventory()->addItem(AetherisItemFactory::kitToken(strtolower($kit['id'])));
+            $player->sendToastNotification(
+                C::colorize(Loader::SERVER_TITLE),
+                C::colorize("&r&a✔ {$kit['name']} successfully claimed!")
+            );
+        });
+
+        self::$form->setTitle("Kits");
+        self::$form->setContent(C::colorize("&r&8Select a kit to claim:"));
+
+        self::$form->addButton(C::colorize("Member Kit"), 0, "ui/icons/crate");
+        self::$form->addButton(C::colorize("Initiate Kit"), 0, "ui/icons/parchment");
+        self::$form->addButton(C::colorize("Explorer Kit"), 0, "ui/icons/compass");
+        self::$form->addButton(C::colorize("Champion Kit"), 0, "ui/icons/king");
+        self::$form->addButton(C::colorize("Warden Kit"), 0, "ui/icons/shield");
+        self::$form->addButton(C::colorize("Aetherian Kit"), 0, "ui/icons/falling-star");
     }
 
     public static function display(Player $player): void {
         $kitScreen = new self($player);
         $kitScreen->getMenu()->send($player);
     }
+
+    public static function displayForm(Player $player): void {
+        $kitScreen = new self($player);
+        $player->sendForm($kitScreen->getForm());
+    }
     
     public function getMenu(): InvMenu
     {
         return self::$menu;
+    }
+
+    public function getForm(): SimpleForm
+    {
+        return self::$form;
     }
 }

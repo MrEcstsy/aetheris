@@ -36,7 +36,7 @@ final class IslandBankManagementScreen extends BaseScreen
             };
         });
 
-        $this->form->setTitle(C::colorize("&r&8Island Bank"));
+        $this->form->setTitle("§r§8Island Bank");
         $this->form->setContent(C::colorize("&r&fIsland Balance: &a$" . number_format($sbSession->getBank()) . "\n&r&fSelect an option:"));
         $this->form->addButton(C::colorize("&r&8Withdraw"));
         $this->form->addButton(C::colorize("&r&8Deposit"));

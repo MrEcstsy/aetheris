@@ -12,7 +12,7 @@ use pocketmine\player\Player;
 use pocketmine\utils\TextFormat as C;
 use Vecnavium\FormsUI\CustomForm;
 
-class IslandCreationConfirmScreen extends BaseScreen
+final class IslandCreationConfirmScreen extends BaseScreen
 {
     private  CustomForm $form;
 
@@ -23,8 +23,8 @@ class IslandCreationConfirmScreen extends BaseScreen
                 return;
             }
 
-            $islandName = (string) ($data[0] ?? "");
-            $choiceIndex = (int) ($data[1] ?? 0);
+            $islandName = (string)$data[0];
+            $choiceIndex = (int)$data[1];
             $session = Loader::getPlayerManager()->getSession($player);
             $sbSession = Loader::getSkyBlockManager();
 
@@ -35,9 +35,11 @@ class IslandCreationConfirmScreen extends BaseScreen
 
             $config = GeneralUtils::getConfiguration(Loader::getInstance(), "config.yml");
 
-            $max = $config->getNested("settings.skyblock.max-char-name");
-            if ($islandName === "" || strlen($islandName) > $max) {
-                $player->sendMessage(C::RED . "Island name must be 1–{$max} characters.");
+            $max = (int) $config->getNested("settings.skyblock.max-char-name", 16);
+            $length = mb_strlen($islandName, 'UTF-8');
+
+            if ($length < 3 || $length > $max) {
+                $player->sendMessage(C::RED . "Island name must be 3–{$max} characters.");
                 return;
             }
 
@@ -53,8 +55,7 @@ class IslandCreationConfirmScreen extends BaseScreen
             $player->sendToastNotification(C::colorize(Loader::SERVER_TITLE), C::colorize("&r&l✔ Success! &fYour island has been created!"));
         });
 
-        $this->form->setTitle(C::colorize("&r&8Island Creation"));
-        $this->form->addLabel(C::colorize("&r&fCreate your dream island!"));
+        $this->form->setTitle("§r§8Island Creation");
         $this->form->addInput(C::colorize("&r&fIsland Name:"), "name", "");
         $this->form->addDropdown(C::colorize("&r&fSelect Generator:"), ["basic_island", "forest_island", "desert_island"], array_search($defaultGenerator, ["basic_island", "forest_island", "desert_island"]));
     }

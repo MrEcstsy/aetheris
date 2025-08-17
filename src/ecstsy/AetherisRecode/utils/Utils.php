@@ -6,36 +6,102 @@ namespace ecstsy\AetherisRecode\utils;
 
 use CameraAPI\Instructions\ClearCameraInstruction;
 use CameraAPI\Instructions\FadeCameraInstruction;
-use CameraAPI\Instructions\ShakeCameraInstruction;
+use ecstsy\AetherisRecode\enchantments\CustomEnchantmentManager;
+use ecstsy\AetherisRecode\enchantments\enchants\chestplate\BlazedEnchant;
+use ecstsy\AetherisRecode\enchantments\enchants\hoe\AutoPlanterEnchant;
+use ecstsy\AetherisRecode\enchantments\enchants\leggings\JellyLegsEnchant;
+use ecstsy\AetherisRecode\enchantments\enchants\pickaxe\AutoSmeltEnchant;
+use ecstsy\AetherisRecode\enchantments\manager\EnchantmentEventRegistry;
+use ecstsy\AetherisRecode\entity\other\FloatingTextEntity;
 use ecstsy\AetherisRecode\listeners\AetherisListener;
+use ecstsy\AetherisRecode\listeners\CrateListener;
 use ecstsy\AetherisRecode\listeners\SkillsListener;
 use ecstsy\AetherisRecode\Loader;
 use ecstsy\AetherisRecode\player\skills\SkillType;
+use ecstsy\AetherisRecode\server\crates\CrateManager;
+use ecstsy\AetherisRecode\server\FloatingTextsInstance;
+use ecstsy\AetherisRecode\server\items\AetherisItemFactory;
+use ecstsy\AetherisRecode\server\regions\Region;
+use ecstsy\AetherisRecode\server\regions\RegionManager;
+use ecstsy\AetherisRecode\server\regions\RegionPermissions;
 use ecstsy\AetherisRecode\skyblock\SkyBlock;
+use ecstsy\AetherisRecode\tasks\AutoPlanterTask;
 use ecstsy\AetherisRecode\utils\inventory\CustomSizedInvMenuType;
+use ecstsy\AetherisRecode\utils\ui\crates\CratePreviewScreen;
+use ecstsy\AetherisRecode\utils\ui\crates\CrateRollScreen;
 use ecstsy\MartianUtilities\utils\GeneralUtils;
 use ecstsy\MartianUtilities\utils\PlayerUtils;
+use muqsit\invmenu\InvMenuHandler;
+use muqsit\invmenu\type\util\InvMenuTypeBuilders;
+use pocketmine\block\Beetroot;
+use pocketmine\block\Block;
+use pocketmine\block\Carrot;
+use pocketmine\block\Crops;
+use pocketmine\block\NetherWartPlant;
+use pocketmine\block\Potato;
 use pocketmine\block\utils\DyeColor;
 use pocketmine\block\VanillaBlocks;
+use pocketmine\block\Wheat;
+use pocketmine\data\bedrock\EnchantmentIdMap;
+use pocketmine\entity\effect\EffectInstance;
+use pocketmine\entity\effect\VanillaEffects;
+use pocketmine\entity\Entity;
+use pocketmine\entity\EntityDataHelper;
+use pocketmine\entity\EntityFactory;
+use pocketmine\entity\Location;
+use pocketmine\entity\object\ItemEntity;
+use pocketmine\inventory\PlayerInventory;
 use pocketmine\item\enchantment\EnchantmentInstance;
 use pocketmine\item\enchantment\StringToEnchantmentParser;
 use pocketmine\item\Item;
+use pocketmine\item\StringToItemParser;
 use pocketmine\item\VanillaItems;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\network\mcpe\cache\StaticPacketCache;
-use pocketmine\network\mcpe\protocol\CameraShakePacket;
+use pocketmine\network\mcpe\protocol\GameRulesChangedPacket;
+use pocketmine\network\mcpe\protocol\types\BoolGameRule;
+use pocketmine\network\mcpe\protocol\types\FloatGameRule;
+use pocketmine\network\mcpe\protocol\types\IntGameRule;
+use pocketmine\network\mcpe\protocol\types\inventory\WindowTypes;
 use pocketmine\player\Player;
 use pocketmine\scheduler\ClosureTask;
+use pocketmine\scheduler\Task;
 use pocketmine\Server;
 use pocketmine\world\Position;
 use pocketmine\utils\TextFormat as C;
+use pocketmine\world\World;
 use Ramsey\Uuid\Uuid;
 
-use function Ramsey\Uuid\v1;
+use function PHPSTORM_META\map;
 
 final class Utils
 {
+    public const FAKE_ENCH_ID = -1;
+
+    public const TYPE_DISPENSER = 'aetheris:dispenser';
+
+    public static function updateGlowEffect(Item $item): void {
+        $root = $item->getNamedTag();
+        $martianCES = $root->getCompoundTag("AetherisCES");
+        $vanillaEnchants = $item->getEnchantments(); 
+        
+        if (($martianCES !== null && $martianCES->count() > 0) && count($vanillaEnchants) === 0) {
+            self::applyDisplayEnchant($item); 
+        } elseif (count($vanillaEnchants) > 0 || ($martianCES !== null && $martianCES->count() > 0)) {
+            self::applyDisplayEnchant($item);
+        } else {
+            self::removeDisplayEnchant($item);
+        }
+    }
+
+    public static function applyDisplayEnchant(Item $item): void {
+        $item->addEnchantment(new EnchantmentInstance(EnchantmentIdMap::getInstance()->fromId(self::FAKE_ENCH_ID)));
+    }
+
+    public static function removeDisplayEnchant(Item $item): void {
+        $item->removeEnchantment(EnchantmentIdMap::getInstance()->fromId(self::FAKE_ENCH_ID));
+    }
 
     public static function getSkyblockRoleSymbol(?string $role): string {
         if ($role === null) {
@@ -92,11 +158,13 @@ final class Utils
      */
     public static function getNetworkBar(?int $ping): string
     {
-        $bars = 5;
-        $filledBars = max(1, min($bars, 6 - ceil($ping / 100)));
-        $emptyBars = $bars - $filledBars;
+        if ($ping === null) {
+            return "■";
+        }
 
-        if ($ping === null) return "■";
+        $bars = 5;
+        $filledBars = (int) max(1, min($bars, 6 - ceil($ping / 100)));
+        $emptyBars = $bars - $filledBars;
 
         return str_repeat("&a■", $filledBars) . str_repeat("&7■", $emptyBars);
     }
@@ -243,96 +311,6 @@ final class Utils
             }
         }
         return null;
-    }
-
-    public static function createKitToken(string $kit, int $amount = 1): Item
-    {
-        $item = VanillaItems::AIR();
-
-        switch ($kit) {
-            case 'initiate':
-                $item = VanillaItems::NETHER_STAR()->setCount($amount);
-
-                $item->setCustomName(C::colorize("&r&l&6Essence of Initiate"));
-                $item->setLore([
-                    C::colorize("&r&7&oThe first steps into the skies begin here."),
-                    C::colorize("&r&fUnlock this kit and prepare for adventure."),
-                    C::colorize("&r&d&lRight-Click &7to claim your rewards.")
-                ]);
-
-                $root = $item->getNamedTag();
-                $kitTag = new CompoundTag();
-
-                $kitTag->setString("aetherisItem", $kit . "_kit");
-                $root->setTag("Aetheris", $kitTag);
-                break;
-            case 'explorer':
-                $item = VanillaItems::NETHER_STAR()->setCount($amount);
-
-                $item->setCustomName(C::colorize("&r&l&6Essence of Explorer"));
-                $item->setLore([
-                    C::colorize("&r&7&oForge your path among the clouds."),
-                    C::colorize("&r&fUnlock this kit and continue your journey."),
-                    C::colorize("&r&d&lRight-Click &7to claim your rewards.")
-                ]);
-
-                $root = $item->getNamedTag();
-                $kitTag = new CompoundTag();
-
-                $kitTag->setString("aetherisItem", $kit . "_kit");
-                $root->setTag('Aetheris', $kitTag);
-                break;
-            case 'champion':
-                $item = VanillaItems::NETHER_STAR()->setCount($amount);
-
-                $item->setCustomName(C::colorize("&r&l&6Essence of Champion"));
-                $item->setLore([
-                    C::colorize("&r&7&oA token for those who rise above the rest."),
-                    C::colorize("&r&fUnlock this kit and equip yourself for glory."),
-                    C::colorize("&r&d&lRight-Click &7to claim your rewards.")
-                ]);
-
-                $root = $item->getNamedTag();
-                $kitTag = new CompoundTag();
-
-                $kitTag->setString("aetherisItem", $kit . "_kit");
-
-                $root->setTag('Aetheris', $kitTag);
-                break;
-            case 'warden':
-                $item = VanillaItems::NETHER_STAR()->setCount($amount);
-
-                $item->setCustomName(C::colorize("&r&l&6Essence of Warden"));
-                $item->setLore([
-                    C::colorize("&r&7&oFor those who guard the skies with unmatched valor."),
-                    C::colorize("&r&fUnlock this kit and defend your realm."),
-                    C::colorize("&r&d&lRight-Click &7to claim your rewards.")
-                ]);
-
-                $root = $item->getNamedTag();
-                $kitTag = new CompoundTag();
-
-                $kitTag->setString("aetherisItem", $kit . "_kit");
-                $root->setTag('Aetheris', $kitTag);
-                break;
-            case 'aetherian':
-                $item = VanillaItems::NETHER_STAR()->setCount($amount);
-
-                $item->setCustomName(C::colorize("&r&l&6Essence of Aetherian"));
-                $item->setLore([
-                    C::colorize("&r&7&oBestowed upon the masters of the skies."),
-                    C::colorize("&r&fUnlock this kit and claim your legacy."),
-                    C::colorize("&r&d&lRight-Click &7to claim your rewards.")
-                ]);
-
-                $root = $item->getNamedTag();
-                $kitTag = new CompoundTag();
-
-                $kitTag->setString("aetherisItem", $kit . "_kit");
-                $root->setTag('Aetheris', $kitTag);
-                break;
-        }
-        return $item;
     }
 
     public static function getKitRankKitItems(string $kit): array
@@ -488,7 +466,7 @@ final class Utils
                         'flame' => $enchants['flame'],
                     ]),
                     VanillaItems::COOKED_PORKCHOP()->setCount(48),
-                    self::createBankNote(null, 2500),
+                    AetherisItemFactory::bankNote(null, 2500),
                     VanillaItems::GOLDEN_APPLE()->setCount(8),
                     VanillaItems::ENCHANTED_GOLDEN_APPLE()->setCount(2),
                 ];
@@ -531,7 +509,7 @@ final class Utils
                         'punch' => $enchants['punch'],
                     ]),
                     VanillaItems::COOKED_PORKCHOP()->setCount(48),
-                    self::createBankNote(null, 3500),
+                    AetherisItemFactory::bankNote(null, 3500),
                     VanillaItems::GOLDEN_APPLE()->setCount(8),
                     VanillaItems::ENCHANTED_GOLDEN_APPLE()->setCount(4),
                 ];
@@ -574,7 +552,7 @@ final class Utils
                         'punch' => $enchants['punch'],
                     ]),
                     VanillaItems::STEAK()->setCount(64),
-                    self::createBankNote(null, 10000),
+                    AetherisItemFactory::bankNote(null, 10000),
                     VanillaItems::ENCHANTED_GOLDEN_APPLE()->setCount(16),
                     // sum else
                 ];
@@ -582,72 +560,6 @@ final class Utils
         }
 
         return $items;
-    }
-
-    public static function createBankNote(?Player $player, int $amount = 1): Item
-    {
-        $item = VanillaItems::PAPER();
-        $signer = $player === null ? 'Ethereal Hub' : $player->getName();
-
-        $item->setCustomName(C::colorize("&r&l&bBank Note &r&7(Right Click)"));
-        $item->setLore([
-            C::colorize("&r&8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"),
-            C::colorize("&r&fValue: &a$" . number_format($amount)),
-            C::colorize("&r&fSigner: &b" . $signer),
-            C::colorize("&r&8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"),
-            C::colorize("&r&7Redeem this note to receive money."),
-        ]);
-
-        $root = $item->getNamedTag();
-        $noteTag = new CompoundTag();
-
-        $noteTag->setString("aetherisItem", "banknote");
-        $noteTag->setInt("worth", $amount);
-
-        $root->setTag('Aetheris', $noteTag);
-        return $item;
-    }
-
-    public static function createExperienceBottle(?Player $player, int $amount = 1): Item
-    {
-        $item = VanillaItems::EXPERIENCE_BOTTLE();
-        $signer = $player === null ? 'Ethereal Hub' : $player->getName();
-
-        $item->setCustomName(C::colorize("&r&l&aExperience Bottle &r&7(Right Click)"));
-        $item->setLore([
-            C::colorize("&r&8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"),
-            C::colorize("&r&fExperience: &a" . number_format($amount) . " EXP"),
-            C::colorize("&r&fSigner: &b" . $signer),
-            C::colorize("&r&8▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"),
-            C::colorize("&r&7Redeem this bottle to gain EXP."),
-        ]);
-
-        $root = $item->getNamedTag();
-        $noteTag = new CompoundTag();
-
-        $noteTag->setString("aetherisItem", "xpnote");
-        $noteTag->setInt("worth", $amount);
-
-        $root->setTag('Aetheris', $noteTag);
-        return $item;
-    }
-
-    public static function createDebugStick(): Item
-    {
-        $item = VanillaItems::STICK();
-
-        $item->setCustomName(C::colorize("&r&l&d* Debug Stick &r&7(Right Click)"));
-        $item->setLore([
-            C::colorize("&r&7Right click to toggle debug.")
-        ]);
-
-        $root = $item->getNamedTag();
-        $debugTag = new CompoundTag();
-
-        $debugTag->setString("aetherisItem", "debugstick");
-
-        $root->setTag('Aetheris', $debugTag);
-        return $item;
     }
 
     public static function getRewardsForSkillLevel(int $level): array
@@ -683,35 +595,6 @@ final class Utils
         return $rewards[$level] ?? ["No rewards available."];
     }
 
-    public static function hasPlayerKillSkillCooldown(Player $player, Player $target): bool
-    {
-        $cooldownTime = 10;
-
-        $pairKey = self::getKillPairKey($player, $target);
-
-        if (isset(SkillsListener::$lastKills[$pairKey])) {
-            $lastKillTime = SkillsListener::$lastKills[$pairKey];
-            $currentTime = time();
-
-            if ($currentTime - $lastKillTime < $cooldownTime) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Update the last kill time for a player-target pair
-     * @param Player $player
-     * @param Player $target
-     */
-    public static function updateLastKillTime(Player $player, Player $target): void
-    {
-        $pairKey = self::getKillPairKey($player, $target);
-        SkillsListener::$lastKills[$pairKey] = time();
-    }
-
     /**
      * Generate a unique key for the player-target pair (for storage in the cooldown list)
      * @param Player $player
@@ -721,31 +604,6 @@ final class Utils
     public static function getKillPairKey(Player $player, Player $target): string
     {
         return min($player->getName(), $target->getName()) . '-' . max($player->getName(), $target->getName());
-    }
-
-    public static function initializeSkillsForPlayer(Player $player): void
-    {
-        $skillManager = Loader::getSkillManager();
-        $skills = $skillManager->getSkillsByPlayerUuid($player->getUniqueId()->toString());
-
-        if (!isset($skills[SkillType::FARMING])) {
-            $skillManager->updateSkill($player->getUniqueId()->toString(), SkillType::FARMING, 1, 0);
-        }
-        if (!isset($skills[SkillType::MINING])) {
-            $skillManager->updateSkill($player->getUniqueId()->toString(), SkillType::MINING, 1, 0);
-        }
-        if (!isset($skills[SkillType::COMBAT])) {
-            $skillManager->updateSkill($player->getUniqueId()->toString(), SkillType::COMBAT, 1, 0);
-        }
-        if (!isset($skills[SkillType::FORAGING])) {
-            $skillManager->updateSkill($player->getUniqueId()->toString(), SkillType::FORAGING, 1, 0);
-        }
-        if (!isset($skills[SkillType::ENCHANTING])) {
-            $skillManager->updateSkill($player->getUniqueId()->toString(), SkillType::ENCHANTING, 1, 0);
-        }
-        if (!isset($skills[SkillType::ALCHEMY])) {
-            $skillManager->updateSkill($player->getUniqueId()->toString(), SkillType::ALCHEMY, 1, 0);
-        }
     }
 
     public static function initCustomSizedInvMenu(): void
@@ -769,10 +627,14 @@ final class Utils
                 $now = microtime(true);
                 $exitMessage = C::colorize("&r&l&a(!) &r&2You are no longer in combat.");
 
-                foreach (AetherisListener::$combatPlayers as $player) {
-                    if (AetherisListener::$combatPlayers[$player] <= $now) {
-                        AetherisListener::$combatPlayers->detach($player);
-                        $player->sendMessage($exitMessage);
+                foreach (array_keys(AetherisListener::$combatPlayers) as $playerName) {
+                    if (AetherisListener::$combatPlayers[$playerName] <= $now) {
+                        unset(AetherisListener::$combatPlayers[$playerName]);
+
+                        $player = Server::getInstance()->getPlayerExact($playerName);
+                        if ($player !== null && $player->isOnline()) {
+                            $player->sendMessage($exitMessage);
+                        }
                     }
                 }
             }
@@ -824,5 +686,333 @@ final class Utils
         foreach ($messages as $message) {
             $player->sendMessage(C::colorize($message));
         }
+    }
+
+    /**
+     * Converts an entity ID to its corresponding mob name
+     * @param int $id
+     * @return string
+     */
+    public static function convertMobIdToName(int $id): string
+    {
+        return match ($id) {
+            10 => "chicken",
+            11 => "cow",
+            12 => "pig",
+            17 => "squid",
+            20 => "iron_golem",
+            32 => "zombie",
+            36 => "zombie_pigman",
+            34 => "skeleton",
+            37 => "slime",
+            16 => "mooshroom",
+            43 => "blaze",
+            default => "unknown",
+        };
+    }
+
+    public static function initDispenserMenu(): void {
+        InvMenuHandler::getTypeRegistry()->register(self::TYPE_DISPENSER, InvMenuTypeBuilders::BLOCK_ACTOR_FIXED()
+                ->setBlock(StringToItemParser::getInstance()->parse("dispenser")->getBlock())
+                ->setBlockActorId("Dispenser")
+                ->setSize(9)
+                ->setNetworkWindowType(WindowTypes::DISPENSER)
+                ->build());
+    }   
+
+    public static function initEntities(): void {
+        EntityFactory::getInstance()->register(FloatingTextEntity::class, function(World $world, CompoundTag $nbt): Entity {
+            return new FloatingTextEntity(EntityDataHelper::parseLocation($nbt, $world), $nbt);
+        }, [FloatingTextEntity::getNetworkTypeId()]);
+    }
+
+    public static function initRegions(RegionManager $regionManager): void {
+        $regions = [
+            new Region("Spawn", new Vector3(470, 82, -397), new Vector3(167, 256, -115), new RegionPermissions(false, false, true, false, false, false, false)),
+        ];
+
+        foreach ($regions as $region) {
+            $regionManager->addRegion($region);
+        }
+    }
+
+    public static function initHandlers(): void {
+        CrateListener::$onLeftClick  = [
+            "vote"   => fn($p, $k) => CratePreviewScreen::display($p, $k),
+            "void"  => fn($p, $k) => CratePreviewScreen::display($p, $k),
+            "stardust" => fn($p, $k) => CratePreviewScreen::display($p, $k),
+            "meteorite" => fn($p, $k) => CratePreviewScreen::display($p, $k),
+        ];
+        CrateListener::$onRightClick = [
+            "vote"   => fn($p, $k) => self::processCrateRoll($p, $k),
+            "void"  => fn($p, $k) => self::processCrateRoll($p, $k),
+            "stardust" => fn($p, $k) => self::processCrateRoll($p, $k),
+            "meteorite" => fn($p, $k) => self::processCrateRoll($p, $k),
+        ];
+    }
+
+    public static function initCratePositions(): void {
+        CrateListener::$cratePositions = [
+            "vote" => new Position(325, 217, -257, Server::getInstance()->getWorldManager()->getDefaultWorld()),
+            "void" => new Position(329, 217, -256, Server::getInstance()->getWorldManager()->getDefaultWorld()),
+            "stardust" => new Position(331, 217, -263, Server::getInstance()->getWorldManager()->getDefaultWorld()),
+            "meteorite" => new Position(332, 217, -259, Server::getInstance()->getWorldManager()->getDefaultWorld()),
+        ];
+
+        $crateNamePositions = [
+            "vote" => [
+                'position' => new Location(325.468, 218, -256.521, Server::getInstance()->getWorldManager()->getDefaultWorld(), 0, 0),
+                'text' => [ 
+                    '&r&d► &aVote &fCrate &r&d◄',
+                    ' ',
+                    '&r&d► &fRight-Click to open the crate.',
+                    '&r&d► &fLeft-Click to preview the crate.',
+                ],
+            ],
+            "void" => [
+                'position' => new Location(329.516, 218, -255.424, Server::getInstance()->getWorldManager()->getDefaultWorld(), 0, 0),
+                'text' => [
+                    '&r&d► &bVoid &fCrate &r&d◄',
+                    ' ',
+                    '&r&d► &fRight-Click to open the crate.',
+                    '&r&d► &fLeft-Click to preview the crate.',
+                ],
+            ],
+            'stardust' => [
+                'position' => new Location(331.487, 218, -262.492, Server::getInstance()->getWorldManager()->getDefaultWorld(), 0, 0),
+                'text' => [
+                    '&r&d► &dStardust &fCrate &r&d◄',
+                    ' ',
+                    '&r&d► &fRight-Click to open the crate.',
+                    '&r&d► &fLeft-Click to preview the crate.',
+                ],
+            ],
+            'meteorite' => [
+                'position' => new Location(332.506, 218, -258.482, Server::getInstance()->getWorldManager()->getDefaultWorld(), 0, 0),
+                'text' => [
+                    '&r&d► &cMeteorite &fCrate &r&d◄',
+                    ' ',
+                    '&r&d► &fRight-Click to open the crate.',
+                    '&r&d► &fLeft-Click to preview the crate.',
+                ],
+            ]
+        ];
+
+        foreach ($crateNamePositions as $key => $data) {
+            $entity = new FloatingTextEntity($data['position']);
+            $entity->setText(C::colorize(implode("\n", $data['text'])));
+            $entity->spawnToAll();
+            FloatingTextsInstance::$particles[$key] = $entity; 
+        }
+    }
+
+    public static function userHasKeyFor(Player $p, string $crateType): bool {
+        $nbt = $p
+            ->getInventory()
+            ->getItemInHand()
+            ->getNamedTag()
+            ->getCompoundTag("Aetheris"); 
+    
+        if ($nbt === null) {
+            return false;
+        }
+    
+        $key = $nbt->getString("crate_key", "");
+        return $key !== "" && strtolower($key) === strtolower($crateType);
+    }
+
+    public static function processCrateRoll(Player $p, string $crateType): void {
+        if (!self::userHasKeyFor($p, $crateType)) {
+            $p->sendMessage(C::colorize("&4Error: &cYou must have a " . $crateType . " key in your hand to open this crate."));
+            PlayerUtils::playSound($p, "mob.villager.no");
+            $direction = $p->getDirectionVector()->multiply(-0.9)->add(0, 0.8, 0); 
+            $p->setMotion($direction);
+            return;
+        }
+
+        $item = $p->getInventory()->getItemInHand();
+        $item->pop();
+        $p->getInventory()->setItemInHand($item);
+        CrateRollScreen::display($p, $crateType);
+    }
+
+    public static function toggleFlight(Player $player, bool $force = false): void
+    {
+        if ($force) {
+            if (!$player->getAllowFlight()) {
+                $player->setAllowFlight(true);
+                $player->sendMessage(C::colorize(Loader::SERVER_PREFIX . "&fSet fly mode &aenabled &ffor " . $player->getNameTag()));
+            }
+        } else {
+            if (!$player->getAllowFlight()) {
+                $player->setAllowFlight(true);
+                $player->sendMessage(C::colorize(Loader::SERVER_PREFIX . "&fSet fly mode &aenabled &ffor " . $player->getNameTag()));
+            } else {
+                $player->setAllowFlight(false);
+                $player->setFlying(false);
+                $player->resetFallDistance();
+                $player->sendMessage(C::colorize(Loader::SERVER_PREFIX . "&fSet fly mode &cdisabled &ffor " . $player->getNameTag()));
+            }
+        }
+    
+        if ($force || $player->getAllowFlight() && !$force) {
+            $player->setFlying(true);
+            $player->resetFallDistance();
+        }
+    }
+
+    public static function onInventorySlotChange(PlayerInventory $inventory, int $slot, Item $oldItem): void {
+        $player = $inventory->getHolder();
+        if (!$player instanceof Player) return;
+
+        $heldSlot = $player->getInventory()->getHeldItemIndex();
+        $newItem = $inventory->getItem($slot);
+
+        if ($slot === $heldSlot) {
+            if (!$oldItem->isNull()) {
+                if (CustomEnchantmentManager::hasEnchantment($oldItem, "haste")) {
+                    $current = $player->getEffects()->get(VanillaEffects::HASTE());
+                    if ($current !== null && $current->getAmplifier() < 3) {
+                        $player->getEffects()->remove(VanillaEffects::HASTE());
+                    }
+                }
+            }
+
+            if (!$newItem->isNull()) {
+                if (CustomEnchantmentManager::hasEnchantment($newItem, "haste")) {
+                    $hasteLevel = CustomEnchantmentManager::getLevel($newItem, "haste");
+                    $current = $player->getEffects()->get(VanillaEffects::HASTE());
+                    if ($current === null || $current->getAmplifier() + 1 < $hasteLevel) {
+                        $player->getEffects()->add(new EffectInstance(
+                            VanillaEffects::HASTE(),
+                            2147483647, 
+                            $hasteLevel - 1,
+                            false
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    public static function banPlayer(Player $target, string $reason, string $staffName, bool $silent = false): void {
+        $targetName = $target->getName();
+        Server::getInstance()->getNameBans()->addBan($targetName, $reason, null, $staffName);
+        $target->kick(C::colorize("&cYou have been banned!\n&fReason: &7$reason"));
+        self::announceBan($targetName, $staffName, $reason, $silent);
+    }
+
+    public static function announceBan(string $bannedName, string $staffName, string $reason, bool $silent = false): void {
+        if ($silent) {
+            $msg = C::colorize("&r&8&l[&5SILENT BAN&8] &7| &d{$bannedName} &7was &5silently banned &7by &d{$staffName}");
+        } else {
+            $msg = C::colorize("&r&4&l[&cBAN&4] &7| &c{$bannedName} &7was banned by &c{$staffName} &8| &fReason: &6{$reason}");
+        }
+
+        foreach(Server::getInstance()->getOnlinePlayers() as $player){
+            if(!$silent || $player->hasPermission("aetheris.staff.silentban")){
+                $player->sendMessage($msg);
+            }
+        }
+    }
+
+    public static function setItemEntityNameTag(ItemEntity $entity, ?int $count = null): void {
+        $item = $entity->getItem();
+        if ($count === null) {
+            $count = $item->getCount();
+        }
+        $name = $item->hasCustomName() ? $item->getCustomName() : $item->getName();
+        $format = "&r&f{$name} x{$count}";
+        $entity->setNameTag(C::colorize($format));
+        $entity->setNameTagAlwaysVisible();
+    }
+
+    public static function initEnchantHandlers(): void {
+        $blockBreakHandlers = [
+            'autosmelt' => [AutoSmeltEnchant::class, 'handle'],
+            'autoplanter' => [AutoPlanterEnchant::class, 'handle']
+        ];
+
+        foreach ($blockBreakHandlers as $name => $handler) {
+            EnchantmentEventRegistry::registerHandler('block_break', $name, $handler);
+        }
+
+        /** ! LINE ! */
+        $entityDamageHandlers = [
+            'jellylegs' => [JellyLegsEnchant::class, 'handle'],
+        ];
+
+        foreach ($entityDamageHandlers as $name => $handler) {
+            EnchantmentEventRegistry::registerHandler('entity_damage', $name, $handler);
+        }
+
+        /** ! LINE ! */
+        $entityDamageByEntityHandlers = [
+            'blazed' => [BlazedEnchant::class, 'handle'],
+        ];
+
+        foreach ($entityDamageByEntityHandlers as $name => $handler) {
+            EnchantmentEventRegistry::registerHandler('entity_damage_by_entity', $name, $handler);
+        }
+
+        $autoPlantTask = new AutoPlanterTask();
+        Loader::getInstance()->getScheduler()->scheduleRepeatingTask($autoPlantTask, 5  );
+        AutoPlanterEnchant::setTask($autoPlantTask);
+    }
+    /**
+     * Dynamically modifies a game rule for a player.
+     *
+     * @param Player $player
+     * @param string $rule The name of the game rule.
+     * @param mixed $value The value to set for the game rule.
+     * @param bool $isEditable Whether the rule is editable (default: false).
+     */
+    public static function modifyGameRule(Player $player, string $rule, mixed $value, bool $isEditable = false): void
+    {
+        if (is_bool($value)) {
+            $gameRule = new BoolGameRule($value, $isEditable);
+        } elseif (is_int($value)) {
+            $gameRule = new IntGameRule($value, $isEditable);
+        } elseif (is_float($value)) {
+            $gameRule = new FloatGameRule($value, $isEditable);
+        } else {
+            return;
+        }
+
+        $packet = GameRulesChangedPacket::create([
+            $rule => $gameRule
+        ]);
+
+        $player->getNetworkSession()->sendDataPacket($packet);
+    }
+
+    public static function registerAetherisEntities(): void {
+        EntityFactory::getInstance()->register(FloatingTextEntity::class, function(World $world, CompoundTag $nbt): Entity {
+            return new FloatingTextEntity(EntityDataHelper::parseLocation($nbt, $world), $nbt);
+        }, [FloatingTextEntity::getNetworkTypeId()]);
+    }
+
+    public static function isFullyGrownCrop(Block $block): bool {
+        if ($block instanceof Wheat) {
+            return $block->getAge() >= $block::MAX_AGE;
+        }
+
+        if ($block instanceof Carrot) {
+            return $block->getAge() >= $block::MAX_AGE;
+        }
+        
+        if ($block instanceof Potato) {
+            return $block->getAge() >= $block::MAX_AGE;
+        }
+
+        if ($block instanceof Beetroot) {
+            return $block->getAge() >= $block::MAX_AGE;
+        }
+
+        if ($block instanceof NetherWartPlant) {
+            return $block->getAge() >= $block::MAX_AGE;
+        }
+
+        return false;
     }
 }

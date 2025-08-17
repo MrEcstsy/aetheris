@@ -52,4 +52,34 @@ final class QueryStmts {
     public const COINFLIP_SELECT = "coinflip.select";
     public const COINFLIP_CREATE = "coinflip.create";
     public const COINFLIP_DELETE = "coinflip.delete";
+
+    // JACKPOT QUERY
+    public const JACKPOT_INIT      = "aetheris_jackpot.init";
+    public const JACKPOT_SELECT    = "aetheris_jackpot.select";
+    public const JACKPOT_UPDATE    = "aetheris_jackpot.update";
+    public const JACKPOT_INSERT    = "aetheris_jackpot.insert";
+
+    // JACKPOT STATS QUERY
+    public const JACKPOT_STATS_INIT    = "aetheris_jackpot_stats.init";
+    public const JACKPOT_STATS_SELECT  = "aetheris_jackpot_stats.select";
+    public const JACKPOT_STATS_UPDATE  = "aetheris_jackpot_stats.update";
+    public const JACKPOT_STATS_INSERT  = "aetheris_jackpot_stats.insert";
+
+    public const PUNISHMENTS_INIT           = "aetheris_punishments.init";
+    public const PUNISHMENTS_INSERT         = "aetheris_punishments.insert";
+    public const PUNISHMENTS_SELECT_BY_UUID = "aetheris_punishments.select_by_uuid";
+    public const PUNISHMENTS_LATEST_STRIKES = "aetheris_punishments.latest_strikes";
+
+
+    // Active Punishments
+    public const ACTIVE_PUNISHMENTS_INIT           = "aetheris_active_punishments.init";
+    public const ACTIVE_PUNISHMENTS_INSERT         = "aetheris_active_punishments.insert";
+    public const ACTIVE_PUNISHMENTS_DELETE         = "aetheris_active_punishments.delete";
+    public const ACTIVE_PUNISHMENTS_SELECT         = "aetheris_active_punishments.select";
+    public const ACTIVE_PUNISHMENTS_SELECT_BY_UUID = "aetheris_active_punishments.select_by_uuid";
+    
+    public const ANTICHEAT_LOGS_INIT = "aetheris_anticheat_logs.init";
+    public const ANTICHEAT_LOGS_INSERT = "aetheris_anticheat_logs.insert";
+    public const ANTICHEAT_LOGS_SELECT_ALL = "aetheris_anticheat_logs.select_all";
+    public const ANTICHEAT_LOGS_SELECT_BY_UUID = "aetheris_anticheat_logs.select_by_uuid";
 }

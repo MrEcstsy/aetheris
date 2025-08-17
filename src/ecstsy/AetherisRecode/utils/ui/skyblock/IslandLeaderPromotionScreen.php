@@ -33,7 +33,7 @@ final class IslandLeaderPromotionScreen extends BaseScreen {
             }
         });
         
-        $form->setTitle(C::colorize("&r&cConfirm Leader Promotion"));
+        $form->setTitle("§r§cConfirm Leader Promotion");
         $form->setContent(C::colorize("&r&fPromoting {$memberName} to leader will transfer all ownership rights and cannot be undone. Proceed with caution!"));
         $form->addButton(C::colorize("&r&aConfirm"));
         $form->addButton(C::colorize("&r&cCancel"));
