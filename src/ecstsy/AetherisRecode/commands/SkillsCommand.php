@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace ecstsy\AetherisRecode\commands;
 
 use CortexPE\Commando\BaseCommand;
-use ecstsy\AetherisRecode\utils\Screens;
 use ecstsy\AetherisRecode\Loader;
-use ecstsy\AetherisRecode\utils\ui\SkillsMainMenuScreen;
+use ecstsy\AetherisRecode\utils\ui\skills\SkillsMainMenuScreen;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
 

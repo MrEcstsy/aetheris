@@ -6,6 +6,7 @@ namespace ecstsy\AetherisRecode\commands\subcommands\kits;
 
 use CortexPE\Commando\args\RawStringArgument;
 use CortexPE\Commando\BaseSubCommand;
+use ecstsy\AetherisRecode\server\items\AetherisItemFactory;
 use ecstsy\AetherisRecode\utils\Utils;
 use ecstsy\MartianUtilities\utils\PlayerUtils;
 use pocketmine\command\CommandSender;
@@ -32,14 +33,14 @@ final class KitGiveSubCommand extends BaseSubCommand {
 
         if ($player === $sender) {
             if ($player instanceof Player) {
-                $player->getInventory()->addItem(Utils::createKitToken($kitName));
+                $player->getInventory()->addItem(AetherisItemFactory::kitToken($kitName));
                 $player->sendMessage(C::colorize("&r&3You have been given the " . $kitName . " kit."));
             }
         }
 
         if ($player !== $sender) {
             if ($player instanceof Player) {
-                $player->getInventory()->addItem(Utils::createKitToken($kitName));
+                $player->getInventory()->addItem(AetherisItemFactory::kitToken($kitName));
                 $sender->sendMessage(C::colorize("&r&3You have given " . $player->getName() . " the " . $kitName . " kit."));
                 $player->sendMessage(C::colorize("&r&3You have been given the " . $kitName . " kit."));
             }

@@ -60,6 +60,16 @@ final class SettingsCommand extends BaseCommand {
                         C::colorize("&r&7Lootbox notification setting has been set to: " . $color . ($settingValue ? "Enabled" : "Disabled"))
                     );
                     break;
+                case 3:
+                    $session->toggleSetting("quick_claim");
+                    $setttingValue = $session->getSetting("quick_claim");
+                    $color = $setttingValue ? '§a' : '§c';
+                    
+                    $player->sendToastNotification(
+                        C::colorize(Loader::SERVER_TITLE),
+                        C::colorize("&r&7Quick redeem setting has been set to: " . $color . ($setttingValue ? "Enabled" : "Disabled"))
+                    );
+                    break;
                 }
         });
 
@@ -68,6 +78,7 @@ final class SettingsCommand extends BaseCommand {
         $form->addButton("Chest Inventories");
         $form->addButton("Announcer");
         $form->addButton("Lootbox Notifications");
+        $form->addButton("Quick Redeem");
 
         $sender->sendForm($form);
     }

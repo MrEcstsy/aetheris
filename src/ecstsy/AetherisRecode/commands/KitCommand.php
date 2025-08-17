@@ -32,7 +32,7 @@ final class KitCommand extends BaseCommand {
         if ($session->getSetting("chest_inventories") === true) {
             KitScreen::display($sender);
         } else {
-            
+            KitScreen::displayForm($sender);
         }
     }
 

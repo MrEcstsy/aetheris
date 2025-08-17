@@ -25,7 +25,6 @@ final class BalanceCommand extends BaseCommand {
         if (!$sender instanceof Player) {
             return;
         }
-
         $name = isset($args['name']) ? $args['name'] : null;
         if ($name === null) {
             $session = Loader::getPlayerManager()->getSession($sender);
@@ -43,6 +42,7 @@ final class BalanceCommand extends BaseCommand {
         $session = Loader::getPlayerManager()->getSession($player);
         $sender->sendMessage(C::colorize("&r&3◆ &f" . $player->getNameTag() . "&r&f's Balance&8: &b$" . number_format($session->getBalance()) . " &r&3◆"));
     }
+
 
     public function getPermission(): string {
         return 'aetheris.default';
